@@ -8,6 +8,10 @@ import (
 
 var cache = NewCache()
 
+func generateCacheKey(prefix, value string) string {
+	return fmt.Sprintf("%s:%s", prefix, value)
+}
+
 func findByID(records []SquirrelData, id string) (SquirrelData, error) {
 	for _, data := range records {
 		if data.UniqueSquirrelID == id {
@@ -17,96 +21,44 @@ func findByID(records []SquirrelData, id string) (SquirrelData, error) {
 	return SquirrelData{}, fmt.Errorf("Unable to find data by ID")
 }
 
-func findByAge(records []SquirrelData, age string) ([]SquirrelData, error) {
-	// Check cache first
-	if cachedResult, exists := cache.Get(age); exists {
+func findByField(records []SquirrelData, prefix string, cond string) ([]SquirrelData, error) {
+	key := generateCacheKey(prefix, cond)
+	
+	if cachedResult, exists := cache.Get(key); exists {
 		return cachedResult, nil
 	}
-	
+
 	var result []SquirrelData
 	for _, data := range records {
-		if data.Age == age {
+		v := reflect.ValueOf(data)
+		field := v.FieldByName(prefix)
+		if field.IsValid() && field.String() == cond {
 			result = append(result, data)
 		}
 	}
+	
 	if len(result) == 0 {
-		return nil, fmt.Errorf("Unable to find data by Age")
+		return nil, fmt.Errorf("Unable to find data by %s: %s", prefix, cond)
 	}
 	
-	cache.Set(age, result)
-	
+	cache.Set(key, result)
 	return result, nil
+}
+
+func findByAge(records []SquirrelData, age string) ([]SquirrelData, error) {
+	return findByField(records, "Age", age)
 }
 
 func findByPrimaryFurColor(records []SquirrelData, color string) ([]SquirrelData, error) {
-	
-	key := fmt.Sprintf("primary:%s", color)
-	
-	// Check cache first
-	if cachedResult, exists := cache.Get(key); exists {
-		return cachedResult, nil
-	}
-	
-	var result []SquirrelData
-	for _, data := range records {
-		if data.PrimaryFurColor == color {
-			result = append(result, data)
-		}
-	}
-
-	if len(result) == 0 {
-		return nil, fmt.Errorf("Unable find data by Primary Fur Color")
-	}
-
-	cache.Set(key, result)
-	return result, nil
+	return findByField(records, "PrimaryFurColor", color)
 }
 
 func findByHighlightFurColor(records []SquirrelData, color string) ([]SquirrelData, error) {
-	
-	key := fmt.Sprintf("highlight:%s", color)
-	
-	// Check cache first
-	if cachedResult, exists := cache.Get(key); exists {
-		return cachedResult, nil
-	}
-	
-	var result []SquirrelData
-	for _, data := range records {
-		if data.HighlightFurColor == color {
-			result = append(result, data)
-		}
-	}
-
-	if len(result) == 0 {
-		return nil, fmt.Errorf("Unable find data by Highlight Fur Color")
-	}
-
-	cache.Set(key, result)
-	return result, nil
+	return findByField(records, "HighlightFurColor", color)
 }
 
-
 func findByLocation(records []SquirrelData, loc string) ([]SquirrelData, error) {
-	
-	// Check cache first
-	if cachedResult, exists := cache.Get(loc); exists {
-		return cachedResult, nil
-	}
-	
-	var result []SquirrelData
-	for _, data := range records {
-		if data.Location == loc {
-			result = append(result, data)
-		}
-	}
-
-	if len(result) == 0 {
-		return nil, fmt.Errorf("Unable find squirrel at %s", loc)
-	}
-
-	cache.Set(loc, result)
-	return result, nil
+	return findByField(records, "Location", loc)
 }
 
 func findSquirrelByCondition(records []SquirrelData, cond string) ([]SquirrelData, error) {
